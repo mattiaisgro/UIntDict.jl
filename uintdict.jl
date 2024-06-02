@@ -27,7 +27,12 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
 
 
 	# Default constructor
-	function Dict{K,V}() where V where K
+	function UIntDict{K,V}() where V where K
+
+		if !isa(K, UInt)
+			# ERROR: Keys are not unsigned integer type!
+		end
+
         size = 0
         capacity = 32
     	table = Vector{Tuple{K,V}}(undef, capacity)
@@ -35,6 +40,11 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
 
     # Copy constructor
     function UIntDict{K,V}(d::Dict{K,V}) where V where K
+
+    	if !isa(K, UInt)
+    		# ERROR: Keys are not unsigned integer type!
+    	end
+
     	
     	table = Vector{Tuple{K,V}}(undef, d.capacity)
         
@@ -44,7 +54,12 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
     end
     	
     # Initialization constructor
-    function UIntDict{K, V}(vec::Vector{Tuple{K, V}}) where {K, V}
+    function UIntDict{K, V}(vec::Array{Tuple{K, V}}) where V where K
+
+    	if !isa(K, UInt)
+    		# ERROR: Keys are not unsigned integer type!
+    	end
+
         
     	table = Vector{Tuple{K,V}}(undef, length(vec))
 
@@ -67,10 +82,50 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
 end
 
 
+# Insert a key-value pair into the hash map
+function insert!(d::UIntDict, key::UInt, value)
+
+	for coll in 0:(length(d.table) - 1)
+
+		index = hashuint(key, coll)
+		
+		# The key-value pair was found
+		if(table[index].first == key)
+			table[index] = (key, value)
+		end
+
+		# No collision => the key doesn't exist
+		if(table[index].first == undef)
+			table[index] = (key, value)
+		end
+	end
+
+	# TO-DO Max collisions! Reallocate table immediately
+end
+
+
 # Get the value at the given key or otherwise
 # return the default value if the key is empty
 function get(d::UIntDict, key::UInt, default)
 
+	# The maximum number of collisions is N - 1
+	for coll in 0:(length(d.table) - 1)
+
+		index = hashuint(key, coll)
+		
+		# The key-value pair was found
+		if(table[index].first == key)
+			return table[index].second
+		end
+
+		# No collision => the key doesn't exist
+		if(table[index].first == undef)
+			return default
+		end
+	end
+
+	# TO-DO If all pairs collide, reallocate table immediately
+	return default
 end
 
 
@@ -79,6 +134,27 @@ end
 # setting it to the default value
 function get!(d::UIntDict, key::UInt, default)
 
+	# The maximum number of collisions is N - 1
+	for coll in 0:(length(d.table) - 1)
+
+		index = hashuint(key, coll)
+		
+		# The key-value pair was found
+		if(table[index].first == key)
+			return table[index].second
+		end
+
+		# No collision => the key doesn't exist
+		if(table[index].first == undef)
+
+			# Set to default
+			table[index] = (key, default);
+			return default
+		end
+	end
+
+	# TO-DO If all pairs collide, reallocate table immediately
+	return default
 end
 
 
@@ -141,4 +217,4 @@ function sqr(x)
 end
 
 # Construct a dictionary using a generator
-d = UIntDict(i => sqr(i) for i = 1:100)
+d = UIntDict{UInt, UInt}(1 => 2, 2 => 3)
