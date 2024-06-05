@@ -6,17 +6,14 @@
 
 
 # Nearest primes to powers of 2
-global uint_sizes = [
+const uint_sizes = [
 	31, 61, 127, 251, 509, 1021, 2039, 4093,
 	8191, 16381, 32749, 65521, 131071, 262139, 524287,
 	1048573, 2097143, 4194301 ]
 
 
 # Simple unsigned integer hash function with linear probing
-function hashuint(key::UInt, size::UInt; coll::UInt = 0)
-
-	return mod(mod(key, size) + coll, size) + 1
-end
+hashuint(key::UInt, size::UInt; coll::UInt = 0) = mod(mod(key, size) + coll, size) + 1
 
 
 
@@ -40,58 +37,58 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
 			# ERROR: Keys are not unsigned integer type!
 		end
 
-        new(Vector{Tuple{K,V}}(undef, 32), 32, 0)
-    end
+		new(Vector{Tuple{K,V}}(undef, 32), 32, 0)
+	end
 
 
-    # Copy constructor
-    function UIntDict{K,V}(d::Dict{K,V}) where V where K
+	# Copy constructor
+	function UIntDict{K,V}(d::Dict{K,V}) where V where K
 
-    	if !isa(K, UInt)
-    		# ERROR: Keys are not unsigned integer type!
-    	end
+		if !isa(K, UInt)
+			# ERROR: Keys are not unsigned integer type!
+		end
 
-    	
-    	table = Vector{Tuple{K,V}}(undef, d.capacity)
-        
-    	for pairs in d.table
-    		# insert pair into table
-    	end
+		
+		table = Vector{Tuple{K,V}}(undef, d.capacity)
+		
+		for pairs in d.table
+			# insert pair into table
+		end
 
-    	new(table, d.capacity, d.size)
-    end
-    	
+		new(table, d.capacity, d.size)
+	end
+		
 
-    # Initialization constructor
-    function UIntDict{K, V}(vec::Array{Tuple{K, V}}) where V where K
+	# Initialization constructor
+	function UIntDict{K, V}(vec::Array{Tuple{K, V}}) where V where K
 
-    	if !isa(K, UInt)
-    		# ERROR: Keys are not unsigned integer type!
-    	end
+		if !isa(K, UInt)
+			# ERROR: Keys are not unsigned integer type!
+		end
 
-        
-    	table = Vector{Tuple{K,V}}(undef, length(vec))
+		
+		new_dict = UIntDict{K, V}()
 
-        for pair in vec
-        	# insert pair into table
-        end
+		for pair in vec
+			# insert pair into table
+		end
 
-        new(table, d.capacity, d.size)
-    end
+		return new_dict
+	end
 
 
-    # Initialization constructor
-    function UIntDict{K, V}(pairs::Pair...) where {K, V}
-        
-    	d = UIntDict{K, V}()
-    	reallocate(d)
+	# Initialization constructor
+	function UIntDict{K, V}(pairs::Pair...) where {K, V}
 
-        for pair in pairs
-        	insert!(d, pair.first, pair.second)
-        end
+		new_dict = UIntDict{K, V}()
+		sizehint!(new_dict, length(pairs))
 
-        return d
-    end
+		for pair in pairs
+			new_dict[pair.first] = pair.second
+		end
+
+		return new_dict
+	end
 	
 end
 
@@ -219,7 +216,7 @@ end
 
 
 # Set the value associated to a given key
-function setindex!(d::UIntDict, val::UInt, key::UInt)
+function setindex!(d::UIntDict, value, key::UInt)
 	
 	# Find the key value pair if it already exists
 	# or iterate to find the first empty pair after collisions
