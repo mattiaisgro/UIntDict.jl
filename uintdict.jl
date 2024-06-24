@@ -4,16 +4,11 @@
 # An hash map with unsigned integer key and value
 #
 
-
-# Nearest primes to powers of 2
-const uint_sizes = [
-	31, 61, 127, 251, 509, 1021, 2039, 4093,
-	8191, 16381, 32749, 65521, 131071, 262139, 524287,
-	1048573, 2097143, 4194301 ]
+# Use table sizes equal to 2^n - 1
 
 
 # Simple unsigned integer hash function with linear probing
-hashuint(key::UInt, size::UInt; coll::UInt = 0) = mod(mod(key, size) + coll, size) + 1
+hashuint(key::UInt, size::UInt; coll::UInt = 0) = (key + coll) & size
 
 
 
@@ -37,7 +32,7 @@ mutable struct UIntDict{K,V} <: AbstractDict{K, V}
 			# ERROR: Keys are not unsigned integer type!
 		end
 
-		new(Vector{Tuple{K,V}}(undef, 32), 32, 0)
+		new(Vector{Tuple{K,V}}(undef, 31), 31, 0)
 	end
 
 
@@ -94,11 +89,9 @@ end
 
 
 # Reallocate the hashmap with a reallocation strategy
+# of using sizes equal to 2^n - 1
 function reallocate(d::UIntDict)
-
-	# Choose primes near powers of 2 ?
-	sizehint!(d, 2 * d.capacity);
-	
+	sizehint!(d, 2 * d.capacity + 1);
 end
 
 
@@ -107,7 +100,7 @@ function insert!(d::UIntDict, key::UInt, value)
 
 	for coll in 0:(length(d.table) - 1)
 
-		index = hashuint(key, coll)
+		index = hashuint(key, d.size, coll)
 		
 		# No collision => the key doesn't exist
 		if(table[index].first == undef)
@@ -124,6 +117,7 @@ function insert!(d::UIntDict, key::UInt, value)
 
 	# TO-DO Max collisions! Reallocate table immediately
 	reallocate(d)
+	insert!(d, key, value)
 end
 
 
@@ -134,7 +128,7 @@ function get(d::UIntDict, key::UInt, default)
 	# The maximum number of collisions is N - 1
 	for coll in 0:(length(d.table) - 1)
 
-		index = hashuint(key, coll)
+		index = hashuint(key, d.size, coll)
 		
 		# The key-value pair was found
 		if(table[index].first == key)
@@ -159,7 +153,7 @@ function get!(d::UIntDict, key::UInt, default)
 	# The maximum number of collisions is N - 1
 	for coll in 0:(length(d.table) - 1)
 
-		index = hashuint(key, coll)
+		index = hashuint(key, d.size, coll)
 		
 		# The key-value pair was found
 		if(table[index].first == key)
@@ -185,7 +179,7 @@ function delete!(d::UIntDict, key::UInt)
 
 	for coll in 0:(length(d.table) - 1)
 		
-		index = hashuint(key, coll)
+		index = hashuint(key, d.size, coll)
 
 		if d.table[index].first == key
 			d.table[index] = undef
@@ -201,7 +195,7 @@ function pop!(d::UIntDict, key::UInt; default)
 
 	for coll in 0:(length(d.table) - 1)
 
-		index = hashuint(key, coll)
+		index = hashuint(key, d.size, coll)
 
 		if d.table[index].first == key
 			value = d.table[index].second
@@ -220,6 +214,26 @@ function setindex!(d::UIntDict, value, key::UInt)
 	
 	# Find the key value pair if it already exists
 	# or iterate to find the first empty pair after collisions
+
+	for coll in 0:(length(d.table) - 1)
+
+		index = hashuint(key, d.size, coll)
+
+		# Key does not exist
+		if d.table[index].first == undef
+			d.table[index] = (key, value)
+		end
+
+		# Key was found
+		if d.table[index].first == key
+			d.table[index].second = value
+		end
+
+	end
+
+	# Max collisions
+	reallocate(d);
+	setindex!(d, value, key)
 end
 
 
@@ -228,6 +242,21 @@ function getindex(d::UIntDict, key::UInt)
 
 	# Iterate over the table by probing
 	# and comparing the key to the pair's key
+	for coll in 0:(length(d.table) - 1)
+
+		index = hashuint(key, d.size, coll)
+
+		if d.table[index].first == undef
+			return undef
+		end
+
+		if d.table[index].first == key
+			return d.table[index].second
+		end
+
+	end
+
+	return undef
 end
 
 
